@@ -1,0 +1,3 @@
+Video Game Rental Management System
+
+Problem Statement: A program is needed to streamline the rental process for a video game store by utilizing a software solution to manage video game rentals.  Currently, the store keeps manual records in an Excel sheet, which is time-consuming and error-prone.  The store would like to develop a program to track video games that have been rented.
