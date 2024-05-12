@@ -17,15 +17,8 @@ class Game:
     customerID: int
     gameTitle:str = ""
     checkoutDate: datetime = None
-
-    # Property to dest due date 5 days after checkoutdate
-    @property
-    def dueDate(self):
-        if self.checkoutDate:
-            due_date = self.checkoutDate + timedelta(days=5)
-            return due_date.strftime("%m-%d-%Y")
-        else:
-            return "N/A"
+    dueDate: datetime = None
+        
 def main():  
         
     print("Bye!")

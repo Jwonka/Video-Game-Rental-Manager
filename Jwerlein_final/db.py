@@ -30,18 +30,17 @@ def get_customers():
         customers.append(customer)
     return customers
 
-# Populate a games ist
+# Populate a games list
 def get_games():
     games = []
-    query = '''SELECT games.customerID, games.gameID, games.gameTitle, games.checkoutDate
+    query = '''SELECT games.customerID, games.gameID, games.gameTitle, games.checkoutDate, games.dueDate
                From games'''
     with closing(conn.cursor()) as c:
         c.execute(query)
         results = c.fetchall()
 
     for row in results:
-        checkout_date = datetime.strptime(row['checkoutDate'], "%Y-%m-%d")
-        game = Game(customerID=row['customerID'], gameID=row['gameID'], gameTitle=row['gameTitle'], checkoutDate=checkout_date)
+        game = Game(customerID=row['customerID'], gameID=row['gameID'], gameTitle=row['gameTitle'], checkoutDate=row['CheckoutDate'], dueDate=row['dueDate'])
         games.append(game)
     return games
 
@@ -109,19 +108,37 @@ def delete_game_by_game_id(id):
 
 # Inserts a game into the games table with an associated CustomerID
 def insert_game(id, game_title):
+    # Set current date and due date five days from current date
+    current_date = datetime.now().strftime("%m/%d/%y")
+    due_date = (datetime.now() + timedelta(days=5)).strftime("%m/%d/%y")
+    
     # Insert Game
-    sql = '''INSERT INTO games (customerID, gameTitle, checkoutDate)
-             VALUES (?, ?, DATE('now'))'''
+    sql = '''INSERT INTO games (customerID, gameTitle, checkoutDate, dueDate)
+             VALUES (?, ?, ?, ?)'''
     with closing(conn.cursor()) as c:
-        c.execute(sql, (id, game_title))
+        c.execute(sql, (id, game_title, current_date, due_date))
         conn.commit()
     # Return inserted GameID
     return c.lastrowid
 
+# Find if a game has already been rented by title
+def find_due_date(game_title):
+    query = '''SELECT dueDate
+               From games
+               WHERE gameTitle = ?'''
+    with closing(conn.cursor()) as c:
+        c.execute(query, (game_title,))
+        row = c.fetchone()
+        if row:
+            due_date = datetime.strptime(row['dueDate'], "%m/%d/%y")
+            return due_date
+        else:
+            return None
+
 # Get all the games a customer has rented
 def find_games(id):
     games = []
-    query = '''SELECT gameID, customerID, gameTitle, checkoutDate
+    query = '''SELECT gameID, customerID, gameTitle, checkoutDate, dueDate
                From games
                WHERE customerID = ?'''
     with closing(conn.cursor()) as c:
@@ -129,8 +146,8 @@ def find_games(id):
         results = c.fetchall()
 
     for row in results:
-        checkout_date = datetime.strptime(row['checkoutDate'], "%Y-%m-%d")
-        game = Game(gameID=row['gameID'], customerID=row['customerID'], gameTitle=row['gameTitle'], checkoutDate=checkout_date)
+        due_date = datetime.strptime(row['dueDate'], "%m/%d/%y")
+        game = Game(gameID=row['gameID'], customerID=row['customerID'], gameTitle=row['gameTitle'], checkoutDate=row['checkoutDate'], dueDate=due_date)
         games.append(game)
     return games
 

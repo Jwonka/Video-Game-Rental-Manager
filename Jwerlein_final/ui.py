@@ -1,6 +1,6 @@
 import db
 from business import Customer, Game
-from datetime import datetime, timedelta
+from datetime import datetime, date, timedelta
 
 def display_customers():
     # Refresh the list of games and customers
@@ -22,10 +22,10 @@ def display_customers():
                 if game.customerID == customer.customerID:
                     game_id = game.gameID
                     game_title = game.gameTitle
-                    checkout_date = game.checkoutDate.strftime("%m-%d-%Y") 
+                    checkout_date = game.checkoutDate
                     due_date = game.dueDate
-                    print(f"   {customer.customerID}\t{customer.custFirstName} {customer.custLastName}\t {checkout_date}" + \
-                      f"\t{due_date}\t {game_title} \t  {game_id}")
+                    print(f"   {customer.customerID}\t{customer.custFirstName} {customer.custLastName}\t  {checkout_date}" + \
+                      f"\t {due_date}\t {game_title} \t  {game_id}")
                     
                     # Set the flag to true if the customer has at least one game
                     customer_has_games = True
@@ -99,11 +99,36 @@ def rent_game():
         print("Please enter a valid game title.")
         return
 
-    game_id = db.insert_game(customer_id, game_title)
+    # Check if title has been rented out
+    due_date = db.find_due_date(game_title)
 
-    full_name = get_full_name(customer_id)
-    print(f"{full_name} has rented {game_title}.\n")
-   
+    #if it has then display message based on due date
+    if due_date:
+        
+        # Convert due_date to datetime.date
+        due_date = due_date.date()
+
+        # Calculate the number of days until its due ensuring the number of days is positive
+        days_due = abs(time_span_days(due_date))
+        
+        # Check if it is overdue or when it should be returned.
+        if due_date > datetime.now().date():
+            print(f"{game_title} is not available, it will be back in {days_due} days.")
+            return
+        else:
+            print(f"{game_title} is not available, it should have been back {days_due} days ago.")
+    else:
+        game_id = db.insert_game(customer_id, game_title)
+        due_date = db.find_due_date(game_title)
+        due_date = due_date.strftime("%m/%d/%y")
+        full_name = get_full_name(customer_id)
+        print(f"{full_name} has rented {game_title} it is due {due_date}.\n")
+
+# Method for calculating days overdue or days til due
+def time_span_days(due_date):
+    days_due = (due_date - date.today()).days
+    return days_due
+  
 def get_full_name(customer_id):
      # Get the customer's name
     customer_first_name, customer_last_name = db.get_customer_name(customer_id)
@@ -118,30 +143,88 @@ def return_game():
         # Verify customer has games to return
         if not games:
             full_name = get_full_name(customer_id)
-            print(f"{full_name} Does not have any games rented.")        
+            print(f"{full_name} does not have any games rented.")        
         else:
             # Display all games the customer has rented
             for game in games:
                 game_id = game.gameID
                 game_title = game.gameTitle
-                checkout_date = game.checkoutDate.strftime("%m-%d-%Y") 
-                due_date = game.dueDate
+                checkout_date = game.checkoutDate
+                
+                # Convert to datetime.date object
+                due_date = game.dueDate.date()
+                
                 full_name = get_full_name(customer_id)
-                print(f"{full_name} rented GameID: {game_id} Title: {game_title} on {checkout_date} it was due {due_date}")
+                
+                # Calculate the number of days until its due ensuring the number of days is positive
+                days_due = abs(time_span_days(due_date))
+
+                # Check if it was due today
+                if due_date == datetime.now().date():
+                    print(f"\n{full_name} rented Title: {game_title} with GameID: {game_id} on {checkout_date}.\n\nIt was due today.\n")
+                # Check if it was due yesterday
+                elif due_date == (datetime.now().date() + timedelta(days=1)):
+                    print(f"\n{full_name} rented Title: {game_title} with GameID: {game_id} on {checkout_date}.\n\nIt was due tommorrow.\n")      
+                # Check if it is early
+                elif due_date == (datetime.now().date() - timedelta(days=1)):
+                    print(f"\n{full_name} rented Title: {game_title} with GameID: {game_id} on {checkout_date}.\n\nIt is {days_due} day early.\n")
+                # Format days if it was due more than one day ago
+                elif due_date < datetime.now().date():
+                    print(f"\n{full_name} rented Title: {game_title} with GameID: {game_id} on {checkout_date}.\n\nIt was due {days_due} days ago.\n")   
+                # Format for more than one day early
+                else:
+                    print(f"\n{full_name} rented Title: {game_title} with GameID: {game_id} on {checkout_date}.\n\nIt is {days_due} days early.\n")
+                    
                 game_id = input("Enter the returned GameID: ")
                 # Verify input
                 if game_id.isnumeric():
                     game_id = int(game_id)
+                    # Delete the game from the database if it has matching gameID's
                     if game_id == game.gameID:
                         db.delete_game_by_game_id(game_id)
-                        print("The game has been returned")
+                        print(f"\n{game_title} has been returned")
                     else:
-                        print("That is not the correct GameID.")
+                        print("\nThat is not the correct GameID.")
                 else:
                     print("Please enter a valid number")          
     else:
         print(f"Please enter a valid CustomerID.")
 
+def display_overdue():
+    # Refresh the list of games and customers
+    customers = db.get_customers()
+    games = db.get_games()
+
+    # Make sure the customers list is not empty
+    if customers is None:
+        print("There are currently no customers in the rental list.")        
+    else:
+        print("-" * 80)
+        print("    Days Late\t  Checkout    Due\tGameID\Game Title\t  ID Name")
+        print("-" * 80)
+        # Loop through each customer and display each game rented  with due dates and days late
+        for customer in customers:
+            # Set a boolean flag to check if a customer has games
+            customer_has_games = False;
+            for game in games:
+                if game.customerID == customer.customerID:
+                    game_id = game.gameID
+                    game_title = game.gameTitle
+                    checkout_date = game.checkoutDate
+                    due_date = game.dueDate
+
+                    # Convert due_date_str to datetime object
+                    due_date = datetime.strptime(due_date, "%m/%d/%y").date()
+                    
+                    days_due = abs(time_span_days(due_date))
+                    if due_date < datetime.now().date():
+                        due_date = due_date.strftime("%m/%d/%y")
+                        print(f"\t{days_due}\t  {checkout_date}  {due_date}\t{game_id} {game_title}\t\t{customer.customerID} {customer.custFirstName} {customer.custLastName}")
+                    
+                    # Set the flag to true if the customer has at least one game
+                    customer_has_games = True
+    print()
+    
 def display_menu():
     print()
     print("MENU OPTIONS")
@@ -150,8 +233,9 @@ def display_menu():
     print("3 – Remove Customer")
     print("4 – Rent Game")
     print("5 – Return Game")
-    print("6 - Show Menu")
-    print("7 - Exit Program")
+    print("6 – Display late games")
+    print("7 - Show Menu")
+    print("8 - Exit Program")
     print()
 
 def main():
@@ -180,8 +264,10 @@ def main():
         elif option == 5:
             return_game()
         elif option == 6:
-            display_menu()
+            display_overdue()
         elif option == 7:
+            display_menu()
+        elif option == 8:
             db.close()
             print("Bye!")
             break
