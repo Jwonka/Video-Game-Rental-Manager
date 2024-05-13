@@ -193,36 +193,28 @@ def return_game():
 def display_overdue():
     # Refresh the list of games and customers
     customers = db.get_customers()
-    games = db.get_games()
+    games = db.get_late_games()
 
     # Make sure the customers list is not empty
     if customers is None:
         print("There are currently no customers in the rental list.")        
     else:
         print("-" * 80)
-        print("    Days Late\t  Checkout    Due\tGameID\Game Title\t  ID Name")
+        print("Days Late   Checkout    Due\tGameID\Game Title\tID Name")
         print("-" * 80)
-        # Loop through each customer and display each game rented  with due dates and days late
-        for customer in customers:
-            # Set a boolean flag to check if a customer has games
-            customer_has_games = False;
-            for game in games:
-                if game.customerID == customer.customerID:
-                    game_id = game.gameID
-                    game_title = game.gameTitle
-                    checkout_date = game.checkoutDate
-                    due_date = game.dueDate
 
-                    # Convert due_date_str to datetime object
-                    due_date = datetime.strptime(due_date, "%m/%d/%y").date()
-                    
+        # For each late game match the customer by customer ID
+        for game in games:           
+            game_id = game.gameID
+            game_title = game.gameTitle
+            checkout_date = game.checkoutDate
+            due_date = game.dueDate.date()
+
+            for customer in customers:
+                if game.customerID == customer.customerID:
                     days_due = abs(time_span_days(due_date))
-                    if due_date < datetime.now().date():
-                        due_date = due_date.strftime("%m/%d/%y")
-                        print(f"\t{days_due}\t  {checkout_date}  {due_date}\t{game_id} {game_title}\t\t{customer.customerID} {customer.custFirstName} {customer.custLastName}")
-                    
-                    # Set the flag to true if the customer has at least one game
-                    customer_has_games = True
+                    due_date = due_date.strftime("%m/%d/%y")
+                    print(f"    {days_due}\t    {checkout_date}  {due_date}\t{game_id} {game_title}\t\t{customer.customerID} {customer.custFirstName} {customer.custLastName}")
     print()
     
 def display_menu():

@@ -151,6 +151,25 @@ def find_games(id):
         games.append(game)
     return games
 
+# Get all the late games a customer has rented
+def get_late_games():
+    games = []
+    today = datetime.now().strftime("%m/%d/%y")
+    
+    query = '''SELECT gameID, customerID, gameTitle, checkoutDate, dueDate
+               From games
+               WHERE dueDate < ?
+               ORDER BY dueDate ASC'''
+    with closing(conn.cursor()) as c:
+        c.execute(query, (today,))
+        results = c.fetchall()
+
+    for row in results:
+        due_date = datetime.strptime(row['dueDate'], "%m/%d/%y")
+        game = Game(gameID=row['gameID'], customerID=row['customerID'], gameTitle=row['gameTitle'], checkoutDate=row['checkoutDate'], dueDate=due_date)
+        games.append(game)
+    return games
+
 def main():
     connect()
     customers = get_customers()
