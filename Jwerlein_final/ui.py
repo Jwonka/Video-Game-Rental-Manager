@@ -197,7 +197,9 @@ def display_overdue():
 
     # Make sure the customers list is not empty
     if customers is None:
-        print("There are currently no customers in the rental list.")        
+        print("There are currently no customers in the rental list.")
+    elif games is None:
+        print("There are currently no overdue games.")
     else:
         print("-" * 80)
         print("Days Late   Checkout    Due\tGameID\Game Title\tID Name")
